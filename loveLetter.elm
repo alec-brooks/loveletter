@@ -25,18 +25,22 @@ type alias Model =
 init : ( Model, Cmd Msg )
 init =
     ( Model
-        (List.repeat 5 "Guard"
-            ++ List.repeat 2 "Royal Subject"
-            ++ List.repeat 2 "Gossip"
-            ++ List.repeat 2 "Companion"
-            ++ List.repeat 2 "Hero"
-            ++ [ "Wizard" ]
-            ++ [ "Lady" ]
-            ++ [ "Princess" ]
+        []
+        []
+        []
+    , (generate ShuffledDeck
+        (shuffle
+            (List.repeat 5 "Guard"
+                ++ List.repeat 2 "Royal Subject"
+                ++ List.repeat 2 "Gossip"
+                ++ List.repeat 2 "Companion"
+                ++ List.repeat 2 "Hero"
+                ++ [ "Wizard" ]
+                ++ [ "Lady" ]
+                ++ [ "Princess" ]
+            )
         )
-        []
-        []
-    , Cmd.none
+      )
     )
 
 
@@ -76,8 +80,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ button [ onClick ShuffleDeck ] [ text "Shuffle Deck" ]
-        , button [ onClick Draw ] [ text "Draw" ]
+        [ button [ onClick Draw ] [ text "Draw" ]
         , div []
             (List.map (\x -> button [ onClick (Play x) ] [ text x ]) model.hand)
         , div [ style [ fontSize ".75em" ] ]
@@ -88,6 +91,7 @@ view model =
         ]
 
 
+main : Program Never Model Msg
 main =
     Html.program
         { init = init
