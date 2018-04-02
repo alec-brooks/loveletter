@@ -107,19 +107,28 @@ update msg model =
 view : Model -> Html Msg
 view model =
     let
-        player =
+        currentPlayer =
             Maybe.withDefault playerStartSetting (get model.currentPlayer model.players)
     in
         div []
             [ text ("Current Player: " ++ toString model.currentPlayer)
             , button [ onClick Draw ] [ text "Draw" ]
             , div []
-                (List.map (\x -> button [ onClick (Play x) ] [ text x ]) player.hand)
+                (List.map (\x -> button [ onClick (Play x) ] [ text x ]) currentPlayer.hand)
             , div [ style [ fontSize ".75em" ] ]
-                [ player.discard
-                    |> String.join ", "
-                    |> text
-                ]
+                (Array.toList
+                    (Array.map
+                        text
+                        (Array.indexedMap
+                            (\playerNum player ->
+                                toString playerNum
+                                    ++ ": "
+                                    ++ String.join ", " player.discard
+                            )
+                            model.players
+                        )
+                    )
+                )
             ]
 
 
