@@ -5,22 +5,28 @@ import Html.Attributes exposing (style)
 import Html.Events exposing (onClick)
 import Style exposing (..)
 import Random exposing (Seed, generate)
-import Random.List exposing (shuffle)
-import Array exposing (Array, get, set)
+import Random.Array exposing (shuffle)
+import Array exposing (Array, get, set, slice, length)
 
 
 type alias Card =
     String
 
 
+type alias PlayerId =
+    Int
+
+
+type alias Player =
+    { hand : List Card
+    , discard : List Card
+    }
+
+
 type alias Model =
-    { deck : List Card
-    , currentPlayer : Int
-    , players :
-        Array
-            { hand : List Card
-            , discard : List Card
-            }
+    { deck : Array Card
+    , currentPlayer : PlayerId
+    , players : Array Player
     }
 
 
@@ -35,19 +41,20 @@ numberOfPlayers =
 init : ( Model, Cmd Msg )
 init =
     ( Model
-        []
+        Array.empty
         0
         (Array.repeat numberOfPlayers playerStartSetting)
     , (generate ShuffledDeck
         (shuffle
-            (List.repeat 5 "Guard"
-                ++ List.repeat 2 "Royal Subject"
-                ++ List.repeat 2 "Gossip"
-                ++ List.repeat 2 "Companion"
-                ++ List.repeat 2 "Hero"
-                ++ [ "Wizard" ]
-                ++ [ "Lady" ]
-                ++ [ "Princess" ]
+            (Array.fromList <|
+                List.repeat 5 "Guard"
+                    ++ List.repeat 2 "Royal Subject"
+                    ++ List.repeat 2 "Gossip"
+                    ++ List.repeat 2 "Companion"
+                    ++ List.repeat 2 "Hero"
+                    ++ [ "Wizard" ]
+                    ++ [ "Lady" ]
+                    ++ [ "Princess" ]
             )
         )
       )
@@ -55,28 +62,37 @@ init =
 
 
 type Msg
-    = Draw
+    = Draw PlayerId
     | Play Card
     | ShuffleDeck
-    | ShuffledDeck (List Card)
+    | ShuffledDeck (Array Card)
+    | StartGame
+
+
+getPlayerById : Model -> Int -> Player
+getPlayerById model playerId =
+    Maybe.withDefault playerStartSetting (get playerId model.players)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
         oldPlayer =
-            Maybe.withDefault playerStartSetting (get model.currentPlayer model.players)
+            getPlayerById model model.currentPlayer
     in
         case msg of
-            Draw ->
+            Draw playerId ->
                 let
+                    chosenPlayer =
+                        getPlayerById model playerId
+
                     newPlayer =
                         { oldPlayer
-                            | hand = List.append oldPlayer.hand (List.take 1 model.deck)
+                            | hand = List.append chosenPlayer.hand (Array.toList <| slice 0 1 model.deck)
                         }
                 in
                     ( { model
-                        | deck = Maybe.withDefault [] (List.tail model.deck)
+                        | deck = slice 1 (length model.deck) model.deck
                         , players = Array.set model.currentPlayer newPlayer model.players
                       }
                     , Cmd.none
@@ -86,7 +102,7 @@ update msg model =
                 let
                     newPlayer =
                         { oldPlayer
-                            | hand = Maybe.withDefault [] (List.tail oldPlayer.hand)
+                            | hand = List.drop 1 oldPlayer.hand
                             , discard = List.append oldPlayer.discard (List.take 1 oldPlayer.hand)
                         }
                 in
@@ -103,16 +119,32 @@ update msg model =
             ShuffledDeck shuffledDeck ->
                 { model | deck = shuffledDeck } ! []
 
+            StartGame ->
+                ( { model
+                    | players =
+                        Array.indexedMap
+                            (\index player ->
+                                { player
+                                    | hand = List.append player.hand (Array.toList <| slice index (index + 1) model.deck)
+                                }
+                            )
+                            model.players
+                    , deck = slice numberOfPlayers (length model.deck) model.deck
+                  }
+                , Cmd.none
+                )
+
 
 view : Model -> Html Msg
 view model =
     let
         currentPlayer =
-            Maybe.withDefault playerStartSetting (get model.currentPlayer model.players)
+            getPlayerById model model.currentPlayer
     in
         div []
             [ text ("Current Player: " ++ toString model.currentPlayer)
-            , button [ onClick Draw ] [ text "Draw" ]
+            , button [ onClick StartGame ] [ text "Start Game" ]
+            , button [ onClick (Draw model.currentPlayer) ] [ text "Draw" ]
             , div []
                 (List.map (\x -> button [ onClick (Play x) ] [ text x ]) currentPlayer.hand)
             , div [ style [ fontSize ".75em" ] ]
@@ -120,10 +152,10 @@ view model =
                     (Array.map
                         text
                         (Array.indexedMap
-                            (\playerNum player ->
+                            (\playerNum playerId ->
                                 toString playerNum
                                     ++ ": "
-                                    ++ String.join ", " player.discard
+                                    ++ String.join ", " playerId.discard
                             )
                             model.players
                         )
