@@ -30,10 +30,12 @@ type alias Model =
     }
 
 
+playerStartSetting : { discard : List a, hand : List b }
 playerStartSetting =
     { hand = [], discard = [] }
 
 
+numberOfPlayers : number
 numberOfPlayers =
     4
 
@@ -67,6 +69,7 @@ type Msg
     | ShuffleDeck
     | ShuffledDeck (Array Card)
     | StartGame
+    | EndTurn
 
 
 getPlayerById : Model -> Int -> Player
@@ -108,7 +111,6 @@ update msg model =
                 in
                     ( { model
                         | players = Array.set model.currentPlayer newPlayer model.players
-                        , currentPlayer = (model.currentPlayer + 1) % numberOfPlayers
                       }
                     , Cmd.none
                     )
@@ -134,6 +136,12 @@ update msg model =
                 , Cmd.none
                 )
 
+            EndTurn ->
+                { model
+                    | currentPlayer = (model.currentPlayer + 1) % numberOfPlayers
+                }
+                    ! []
+
 
 view : Model -> Html Msg
 view model =
@@ -145,6 +153,7 @@ view model =
             [ text ("Current Player: " ++ toString model.currentPlayer)
             , button [ onClick StartGame ] [ text "Start Game" ]
             , button [ onClick (Draw model.currentPlayer) ] [ text "Draw" ]
+            , button [ onClick EndTurn ] [ text "End Turn" ]
             , div []
                 (List.map (\x -> button [ onClick (Play x) ] [ text x ]) currentPlayer.hand)
             , div [ style [ fontSize ".75em" ] ]
